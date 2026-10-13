@@ -5,6 +5,7 @@ cd "$(dirname "$0")/../.."
 mkdir -p ios/App/output
 xcrun simctl list devices available -j > ios/App/output/simulator-devices.json
 device="$(node --input-type=commonjs -e 'const f=require("fs");const all=JSON.parse(f.readFileSync("ios/App/output/simulator-devices.json","utf8"));for(const [runtime,devices] of Object.entries(all.devices)){if(!runtime.includes("iOS"))continue;const d=devices.find(v=>v.isAvailable&&v.name.startsWith("iPhone"));if(d){console.log(d.udid);process.exit(0)}}process.exit(1)')"
+trap 'xcrun simctl shutdown "$device" >/dev/null 2>&1 || true' EXIT
 xcrun simctl boot "$device" || true
 xcrun simctl bootstatus "$device" -b
 xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \

@@ -51,10 +51,10 @@ jobs:
         run: npm run test:unit -- test/unit/onlineMusic/nativeQqNetwork.test.ts test/unit/onlineMusic/qqTransport.test.ts
       - name: Build and sync web assets
         run: npm run mobile:build
-      - name: Verify iOS startup, QR generation and refresh
-        run: bash packaging/ios/simulator-qq-smoke.sh
       - name: Compile and package unsigned IPA
         run: bash packaging/ios/build-ipa.sh
+      - name: Verify iOS startup, QR generation and refresh
+        run: bash packaging/ios/simulator-qq-smoke.sh
       - name: Upload IPA and checksum
         uses: actions/upload-artifact@v4
         with:
