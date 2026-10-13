@@ -5,6 +5,7 @@
  * Provides search and download/decryption capabilities for QQ Music lyrics.
  */
 
+import { hasNativeQqBackend } from '../../../services/nativeQq/capabilities';
 import { SongResult } from '../../../types';
 import { parseLyricsByFormat } from '../parserCore';
 import { detectTimedLyricFormat } from '../formatDetection';
@@ -40,11 +41,11 @@ async function requestQQ(method: string, module: string, param: any): Promise<an
   };
 
   const targetUrl = 'https://u.y.qq.com/cgi-bin/musicu.fcg';
-  const url = isElectron ? targetUrl : `/api/lyric-proxy?url=${encodeURIComponent(targetUrl)}`;
+  const url = isElectron || hasNativeQqBackend() ? targetUrl : `/api/lyric-proxy?url=${encodeURIComponent(targetUrl)}`;
 
   const response = await fetch(url, {
     method: 'POST',
-    credentials: isElectron ? 'omit' : 'same-origin',
+    credentials: isElectron || hasNativeQqBackend() ? 'omit' : 'same-origin',
     headers: {
       'Content-Type': 'application/json',
       'Cookie': 'tmeLoginType=-1;',

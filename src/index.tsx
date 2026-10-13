@@ -1,4 +1,5 @@
 import { Buffer } from 'buffer';
+import { installNativeQqNetworking } from './services/nativeQq/network';
 import { installGlobalVisualizerFrameRateLimiter } from './utils/frameRateLimiter';
 import { installConsoleLogCapture } from './utils/consoleLogBuffer';
 import { installDebugModule } from './services/debug/debugModule';
@@ -6,6 +7,7 @@ import { installMemorySampleFeed } from './services/debug/memorySamples';
 // import { installCoverSizeAudit } from './services/debug/coverSizeSamples';
 // @ts-ignore
 globalThis.Buffer = Buffer;
+installNativeQqNetworking();
 // First, so the debug overlay's console tab has the startup lines too - they are where a failure
 // to reach a library or restore a session shows up.
 installConsoleLogCapture();

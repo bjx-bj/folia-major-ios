@@ -1,3 +1,4 @@
+import { hasNativeQqBackend, NATIVE_QQ_API_BASE } from '../nativeQq/capabilities';
 import { OnlineProviderError } from '../../types/onlineMusic';
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './providerStorage';
 
@@ -78,6 +79,7 @@ const describeEmbeddedStatus = async (): Promise<string> => {
 };
 
 const resolveApiBase = async (): Promise<string> => {
+    if (hasNativeQqBackend()) return NATIVE_QQ_API_BASE;
     const readPort = getElectronQqPortReader();
     if (readPort) {
         if (electronApiBase) return electronApiBase;
@@ -229,10 +231,10 @@ const persistConfirmedSession = (operation: QqOperation, body: any): void => {
 };
 
 /** 网页版配置的远端 API 地址（自检与诊断报告用）；桌面版走内嵌后端，返回 null。 */
-export const getQqRemoteApiBase = (): string | null => (getElectronQqPortReader() ? null : getWebApiBase() || null);
+export const getQqRemoteApiBase = (): string | null => (getElectronQqPortReader() || hasNativeQqBackend() ? null : getWebApiBase() || null);
 
 export const getQqTransportAvailability = () => {
-    if (getElectronQqPortReader()) return { configured: true } as const;
+    if (getElectronQqPortReader() || hasNativeQqBackend()) return { configured: true } as const;
     return getWebApiBase()
         ? { configured: true } as const
         : { configured: false, reason: 'not-configured' as const };
@@ -284,7 +286,7 @@ export const requestQq = async <T = unknown>(operation: QqOperation, params: QqP
     const cookie = getWebSessionCookie();
     const headers: Record<string, string> = {};
     if (cookie) {
-        if (isSameOriginBase(base)) {
+        if (base === NATIVE_QQ_API_BASE || isSameOriginBase(base)) {
             const token = tokenFromCookieString(cookie);
             // 同源请求不允许把未知格式的 session 放回 URL；清掉无效值，交给后端按未登录处理。
             if (token) headers[SESSION_HEADER_NAME] = token;
@@ -300,7 +302,10 @@ export const requestQq = async <T = unknown>(operation: QqOperation, params: QqP
     const credentials: RequestCredentials = isSameOriginBase(base) ? 'same-origin' : 'omit';
     let response: Response;
     try {
-        response = await fetch(`${base}${endpoint.path}?${query}`, { credentials, headers });
+        const url = `${base}${endpoint.path}?${query}`;
+        response = base === NATIVE_QQ_API_BASE
+            ? await (await import('../nativeQq/runtime')).handleNativeQqRequest(new Request(url, { headers }))
+            : await fetch(url, { credentials, headers });
     } catch (error) {
         // 连后端本身都没连上（内嵌后端退出、远端不可达），与后端回了错误码分开。
         throw new OnlineProviderError(
