@@ -1,0 +1,70 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      netease_api_base:
+        description: 'Optional HTTPS Netease API endpoint'
+        required: false
+        type: string
+      kugou_api_base:
+        description: 'Optional HTTPS KuGou API endpoint'
+        required: false
+        type: string
+      qq_api_base:
+        description: 'Optional HTTPS QQ Music API endpoint'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      ONNXRUNTIME_NODE_INSTALL: skip
+      VITE_NETEASE_API_BASE: ${{ inputs.netease_api_base || vars.VITE_NETEASE_API_BASE }}
+      VITE_KUGOU_API_BASE: ${{ inputs.kugou_api_base || vars.VITE_KUGOU_API_BASE }}
+      VITE_QQ_API_BASE: ${{ inputs.qq_api_base || vars.VITE_QQ_API_BASE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Select Xcode 26 or newer
+        shell: bash
+        run: |
+          XCODE_PATH="$(find /Applications -maxdepth 1 -name 'Xcode_*.app' | sort -V | tail -n 1)"
+          if [ -n "$XCODE_PATH" ]; then
+            sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          fi
+          xcodebuild -version
+          XCODE_MAJOR="$(xcodebuild -version | head -n 1 | awk '{print $2}' | cut -d. -f1)"
+          test "$XCODE_MAJOR" -ge 26
+      - name: Install dependencies
+        run: npm ci
+      - name: Build and sync web assets
+        run: npm run mobile:build
+      - name: Compile and package unsigned IPA
+        run: bash packaging/ios/build-ipa.sh
+      - name: Upload IPA and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: Folia-iOS-unsigned
+          path: |
+            ios/App/output/*.ipa
+            ios/App/output/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Folia-iOS-diagnostics
+          path: ios/DerivedData/Logs
+          if-no-files-found: ignore
+          retention-days: 7
