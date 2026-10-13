@@ -78,30 +78,11 @@ public class FoliaNetworkPlugin: CAPPlugin, CAPBridgedPlugin, URLSessionTaskDele
         lock.lock(); let follow = redirectPolicy[task.taskDescription ?? ""] ?? false; lock.unlock()
         completionHandler(follow && request.url.map(allowed) == true ? request : nil)
     }
-    // 设备密钥只保存在 Keychain 中；重启应用后可继续打开原源码的加密登录态。
+    // 首选 Keychain，兼容没有 Keychain entitlement 的侧载签名。
     @objc func sessionSecret(_ call: CAPPluginCall) {
-        let service = (Bundle.main.bundleIdentifier ?? "top.izuna.foliamajor") + ".qq"
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
-                                   kSecAttrService as String: service, kSecAttrAccount as String: "session-secret"]
-        var read = query
-        read[kSecReturnData as String] = true
-        read[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        let status = SecItemCopyMatching(read as CFDictionary, &result)
-        if status == errSecSuccess, let data = result as? Data, let secret = String(data: data, encoding: .utf8) {
-            call.resolve(["secret": secret]); return
-        }
-        guard status == errSecItemNotFound else { call.reject("Cannot read QQ session key (OSStatus \(status))"); return }
-        var bytes = [UInt8](repeating: 0, count: 32)
-        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
-            call.reject("Cannot create QQ session key"); return
-        }
-        let secret = Data(bytes).base64EncodedString()
-        var item = query
-        item[kSecValueData as String] = Data(secret.utf8)
-        item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        let saveStatus = SecItemAdd(item as CFDictionary, nil)
-        guard saveStatus == errSecSuccess else { call.reject("Cannot persist QQ session key (OSStatus \(saveStatus))"); return }
-        call.resolve(["secret": secret])
+        lock.lock()
+        defer { lock.unlock() }
+        do { call.resolve(["secret": try FoliaQqSessionKeyStore.secret()]) }
+        catch { call.reject(error.localizedDescription) }
     }
 }
