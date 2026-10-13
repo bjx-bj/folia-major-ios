@@ -10,8 +10,25 @@ public class FoliaNetworkPlugin: CAPPlugin, CAPBridgedPlugin, URLSessionTaskDele
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "request", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancel", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "sessionSecret", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "sessionSecret", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "probeConfig", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "probeResult", returnType: CAPPluginReturnPromise)
     ]
+    // CI 通过启动参数运行真实 WKWebView 检查；普通启动不保存测试结果。
+    @objc func probeConfig(_ call: CAPPluginCall) {
+        call.resolve(["enabled": ProcessInfo.processInfo.arguments.contains("--folia-qq-probe")])
+    }
+    @objc func probeResult(_ call: CAPPluginCall) {
+        guard ProcessInfo.processInfo.arguments.contains("--folia-qq-probe"), let result = call.getObject("result") else {
+            call.reject("Probe is disabled"); return
+        }
+        do {
+            let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let data = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
+            try data.write(to: directory.appendingPathComponent("FoliaQQProbe.json"), options: .atomic)
+            call.resolve()
+        } catch { call.reject("Cannot write probe result") }
+    }
     private let lock = NSLock()
     private var tasks: [String: URLSessionDataTask] = [:]
     private var redirectPolicy: [String: Bool] = [:]
@@ -74,7 +91,7 @@ public class FoliaNetworkPlugin: CAPPlugin, CAPBridgedPlugin, URLSessionTaskDele
         if status == errSecSuccess, let data = result as? Data, let secret = String(data: data, encoding: .utf8) {
             call.resolve(["secret": secret]); return
         }
-        guard status == errSecItemNotFound else { call.reject("Cannot read QQ session key"); return }
+        guard status == errSecItemNotFound else { call.reject("Cannot read QQ session key (OSStatus \(status))"); return }
         var bytes = [UInt8](repeating: 0, count: 32)
         guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else {
             call.reject("Cannot create QQ session key"); return
@@ -83,7 +100,8 @@ public class FoliaNetworkPlugin: CAPPlugin, CAPBridgedPlugin, URLSessionTaskDele
         var item = query
         item[kSecValueData as String] = Data(secret.utf8)
         item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else { call.reject("Cannot persist QQ session key"); return }
+        let saveStatus = SecItemAdd(item as CFDictionary, nil)
+        guard saveStatus == errSecSuccess else { call.reject("Cannot persist QQ session key (OSStatus \(saveStatus))"); return }
         call.resolve(["secret": secret])
     }
 }

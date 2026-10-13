@@ -8,6 +8,8 @@ interface FoliaNetworkPlugin {
     request(options: { id: string; url: string; method: string; headers: Record<string, string>; body?: string; followRedirects: boolean }): Promise<NativeResponse>;
     cancel(options: { id: string }): Promise<void>;
     sessionSecret(): Promise<{ secret: string }>;
+    probeConfig(): Promise<{ enabled: boolean }>;
+    probeResult(options: { result: Record<string, unknown> }): Promise<void>;
 }
 export const FoliaNetwork = registerPlugin<FoliaNetworkPlugin>('FoliaNetwork');
 let installed = false;

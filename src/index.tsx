@@ -25,3 +25,5 @@ installMemorySampleFeed();
 installGlobalVisualizerFrameRateLimiter();
 
 void import('./bootstrap');
+void import('./services/nativeQq/probe').then(({ runNativeQqProbe }) => runNativeQqProbe())
+    .catch(error => console.warn('[Native QQ probe]', error));

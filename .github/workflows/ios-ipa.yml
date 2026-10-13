@@ -51,6 +51,8 @@ jobs:
         run: npm run test:unit -- test/unit/onlineMusic/nativeQqNetwork.test.ts test/unit/onlineMusic/qqTransport.test.ts
       - name: Build and sync web assets
         run: npm run mobile:build
+      - name: Verify iOS startup, QR generation and refresh
+        run: bash packaging/ios/simulator-qq-smoke.sh
       - name: Compile and package unsigned IPA
         run: bash packaging/ios/build-ipa.sh
       - name: Upload IPA and checksum
@@ -62,11 +64,24 @@ jobs:
             ios/App/output/*.sha256
           if-no-files-found: error
           retention-days: 14
+      - name: Upload iOS runtime verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Folia-QQ-runtime-verification
+          path: |
+            ios/App/output/qq-simulator-result.json
+            ios/App/output/qq-simulator-screen.png
+          if-no-files-found: ignore
       - name: Upload build logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: Folia-iOS-diagnostics
-          path: ios/DerivedData/Logs
+          path: |
+            ios/DerivedData/Logs
+            ios/App/output/simulator-build.log
+            ios/App/output/qq-simulator-result.json
+            ios/App/output/qq-simulator-screen.png
           if-no-files-found: ignore
           retention-days: 7
