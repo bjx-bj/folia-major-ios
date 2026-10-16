@@ -29,6 +29,18 @@ Lyrics Reimagined // 辞曲新境
 
 </div>
 
+## iOS Port and Attribution
+
+This repository is the iOS port of Folia. It is based on the original project and reuses its React application, lyric rendering, and QQ Music protocol implementation through Capacitor.
+
+- **Original author**: [@chthollyphile](https://github.com/chthollyphile)
+- **Original repository**: [chthollyphile/folia-major](https://github.com/chthollyphile/folia-major)
+- **Original license**: AGPL-3.0; see LICENSE
+- **iOS port maintainer**: [@bjx-bj](https://github.com/bjx-bj)
+- **Attribution details**: ATTRIBUTION.md
+
+This is not the official upstream repository. The original copyright notices, contributor credits, and license terms remain in force. The iOS-specific work is identified by this repository's commit history.
+
 ## 项目简介
 
 Folia是一个以全屏沉浸式歌词播放为核心的在线音乐播放器，支持网易云、酷狗、Navidrome 和本地音乐库，通过智能歌词匹配，AI生成配色主题，以及多种全屏歌词动画为用户提供独特的听歌体验。
